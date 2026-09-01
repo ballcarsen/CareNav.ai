@@ -2,12 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVapiClient } from "@/lib/vapi/client";
-import { buildAssistantOverrides, buildCareNavigatorAssistant } from "@/lib/vapi/assistant-config";
+import { buildAssistantForTopic, buildAssistantOverrides } from "@/lib/vapi/assistant-config";
 import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTranscript";
+import type { ConversationTopic } from "@/lib/types/database";
 
 type CallState = "idle" | "connecting" | "connected" | "error";
 
-export function StartStopCallButton({ userId }: { userId: string }) {
+export function StartStopCallButton({
+  userId,
+  topic,
+  onCallActiveChange,
+}: {
+  userId: string;
+  topic: ConversationTopic;
+  onCallActiveChange?: (active: boolean) => void;
+}) {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<LiveTranscriptTurn[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -57,33 +66,34 @@ export function StartStopCallButton({ userId }: { userId: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    onCallActiveChange?.(callState === "connecting" || callState === "connected");
+  }, [callState, onCallActiveChange]);
+
   const startCall = useCallback(async () => {
     setErrorMessage(null);
     setTurns([]);
     setCallState("connecting");
 
     try {
-      const created = await fetch("/api/conversations", { method: "POST" });
+      const conversationId = crypto.randomUUID();
+      conversationIdRef.current = conversationId;
+
+      const created = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: conversationId, topic }),
+      });
       if (!created.ok) throw new Error("Failed to create conversation record");
-      const { id } = (await created.json()) as { id: string };
-      conversationIdRef.current = id;
 
       const vapi = getVapiClient();
-      const call = await vapi.start(buildCareNavigatorAssistant(), buildAssistantOverrides(userId));
-
-      if (call?.id && conversationIdRef.current) {
-        await fetch("/api/conversations", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: conversationIdRef.current, vapiCallId: call.id }),
-        });
-      }
+      await vapi.start(buildAssistantForTopic(topic), buildAssistantOverrides(userId, conversationId));
     } catch (error) {
       console.error("Failed to start call", error);
       setErrorMessage("Couldn't start the call. Please check your microphone permissions and try again.");
       setCallState("error");
     }
-  }, [userId]);
+  }, [userId, topic]);
 
   const stopCall = useCallback(() => {
     const vapi = getVapiClient();

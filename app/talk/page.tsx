@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { StartStopCallButton } from "@/components/StartStopCallButton";
+import { TalkScreen } from "@/components/TalkScreen";
 
 export default async function TalkPage() {
   const supabase = await createClient();
@@ -20,7 +20,7 @@ export default async function TalkPage() {
           Ask about appointments, referrals, insurance, or finding local resources.
         </p>
       </div>
-      <StartStopCallButton userId={user.id} />
+      <TalkScreen userId={user.id} />
     </main>
   );
 }

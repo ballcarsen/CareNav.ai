@@ -1,5 +1,11 @@
 export type ProfileRole = "patient" | "family_member";
 export type ConversationStatus = "in_progress" | "completed" | "failed";
+export type ConversationTopic =
+  | "general"
+  | "medical_history"
+  | "symptoms"
+  | "medications"
+  | "family_history";
 
 export interface TranscriptTurn {
   role: string;
@@ -40,10 +46,12 @@ export interface Database {
           user_id: string;
           vapi_call_id: string | null;
           status: ConversationStatus;
+          topic: ConversationTopic;
           started_at: string;
           ended_at: string | null;
           transcript: TranscriptTurn[] | null;
           summary: string | null;
+          structured_data: Record<string, unknown> | null;
           ended_reason: string | null;
           created_at: string;
         };
@@ -52,10 +60,12 @@ export interface Database {
           user_id: string;
           vapi_call_id?: string | null;
           status?: ConversationStatus;
+          topic?: ConversationTopic;
           started_at?: string;
           ended_at?: string | null;
           transcript?: TranscriptTurn[] | null;
           summary?: string | null;
+          structured_data?: Record<string, unknown> | null;
           ended_reason?: string | null;
           created_at?: string;
         };
@@ -64,10 +74,12 @@ export interface Database {
           user_id?: string;
           vapi_call_id?: string | null;
           status?: ConversationStatus;
+          topic?: ConversationTopic;
           started_at?: string;
           ended_at?: string | null;
           transcript?: TranscriptTurn[] | null;
           summary?: string | null;
+          structured_data?: Record<string, unknown> | null;
           ended_reason?: string | null;
           created_at?: string;
         };

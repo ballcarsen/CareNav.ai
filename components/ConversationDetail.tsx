@@ -1,4 +1,5 @@
 import type { Database } from "@/lib/types/database";
+import { TOPICS } from "@/lib/vapi/assistant-config";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"];
 
@@ -18,12 +19,24 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
           >
             {conversation.status}
           </span>
+          <span className="text-xs rounded-full px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+            {TOPICS[conversation.topic]?.label ?? conversation.topic}
+          </span>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             {new Date(conversation.started_at).toLocaleString()}
           </span>
         </div>
         {conversation.summary && <p className="text-sm">{conversation.summary}</p>}
       </div>
+
+      {conversation.structured_data && (
+        <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
+          <h2 className="text-sm font-medium mb-2">Extracted details</h2>
+          <pre className="text-xs whitespace-pre-wrap break-words text-gray-600 dark:text-gray-300">
+            {JSON.stringify(conversation.structured_data, null, 2)}
+          </pre>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         {conversation.transcript && conversation.transcript.length > 0 ? (
