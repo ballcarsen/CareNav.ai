@@ -20,9 +20,14 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
           >
             {conversation.status}
           </span>
-          <span className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
-            {TOPICS[conversation.topic]?.label ?? conversation.topic}
-          </span>
+          {conversation.topics.map((topic) => (
+            <span
+              key={topic}
+              className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300"
+            >
+              {TOPICS[topic]?.label ?? topic}
+            </span>
+          ))}
           <span className="text-sm text-stone-500 dark:text-stone-400">
             {new Date(conversation.started_at).toLocaleString()}
           </span>
@@ -30,12 +35,15 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
         {conversation.summary && <p className="text-sm">{conversation.summary}</p>}
       </div>
 
-      {conversation.structured_data && (
-        <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-          <h2 className="text-sm font-medium mb-3">Extracted details</h2>
-          <StructuredDataWidget topic={conversation.topic} data={conversation.structured_data} />
-        </div>
-      )}
+      {conversation.structured_data &&
+        conversation.topics
+          .filter((topic) => topic !== "general")
+          .map((topic) => (
+            <div key={topic} className="rounded-lg border border-black/10 dark:border-white/10 p-4">
+              <h2 className="text-sm font-medium mb-3">{TOPICS[topic]?.label ?? topic} details</h2>
+              <StructuredDataWidget topic={topic} data={conversation.structured_data!} />
+            </div>
+          ))}
 
       <div className="flex flex-col gap-3">
         {conversation.transcript && conversation.transcript.length > 0 ? (

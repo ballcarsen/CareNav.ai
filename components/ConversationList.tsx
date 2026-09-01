@@ -32,10 +32,15 @@ export function ConversationList({ conversations }: { conversations: Conversatio
               <span className="text-sm font-medium">
                 {new Date(c.started_at).toLocaleString()}
               </span>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
-                  {TOPICS[c.topic]?.label ?? c.topic}
-                </span>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                {c.topics.map((topic) => (
+                  <span
+                    key={topic}
+                    className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300"
+                  >
+                    {TOPICS[topic]?.label ?? topic}
+                  </span>
+                ))}
                 <span className="text-xs text-stone-500 dark:text-stone-400">
                   {formatDuration(c.started_at, c.ended_at)}
                 </span>

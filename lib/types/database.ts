@@ -46,7 +46,7 @@ export interface Database {
           user_id: string;
           vapi_call_id: string | null;
           status: ConversationStatus;
-          topic: ConversationTopic;
+          topics: ConversationTopic[];
           started_at: string;
           ended_at: string | null;
           transcript: TranscriptTurn[] | null;
@@ -60,7 +60,7 @@ export interface Database {
           user_id: string;
           vapi_call_id?: string | null;
           status?: ConversationStatus;
-          topic?: ConversationTopic;
+          topics?: ConversationTopic[];
           started_at?: string;
           ended_at?: string | null;
           transcript?: TranscriptTurn[] | null;
@@ -74,7 +74,7 @@ export interface Database {
           user_id?: string;
           vapi_call_id?: string | null;
           status?: ConversationStatus;
-          topic?: ConversationTopic;
+          topics?: ConversationTopic[];
           started_at?: string;
           ended_at?: string | null;
           transcript?: TranscriptTurn[] | null;

@@ -27,7 +27,7 @@ export default async function TalkPage() {
 
   const { data: completedConversations } = await supabase
     .from("conversations")
-    .select("id, topic, structured_data, summary, started_at")
+    .select("id, topics, structured_data, summary, started_at")
     .eq("user_id", user.id)
     .eq("status", "completed")
     .order("started_at", { ascending: false });
@@ -36,9 +36,11 @@ export default async function TalkPage() {
 
   const byTopic = new Map<ConversationTopic, CompletedConversation[]>();
   for (const c of completedConversations ?? []) {
-    const list = byTopic.get(c.topic) ?? [];
-    list.push(c);
-    byTopic.set(c.topic, list);
+    for (const topic of c.topics) {
+      const list = byTopic.get(topic) ?? [];
+      list.push(c);
+      byTopic.set(topic, list);
+    }
   }
 
   const topicHistory: Partial<Record<ConversationTopic, TopicHistoryEntry>> = {};

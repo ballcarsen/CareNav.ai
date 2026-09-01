@@ -2,14 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVapiClient } from "@/lib/vapi/client";
-import {
-  buildAssistantForTopic,
-  buildAssistantOverrides,
-  TOPICS,
-  TOOL_LIVE_META,
-} from "@/lib/vapi/assistant-config";
+import { buildSquad, TOPICS, TOPIC_BY_ASSISTANT_NAME, TOOL_LIVE_META } from "@/lib/vapi/assistant-config";
 import { mergeStructuredDataArrays } from "@/lib/vapi/structured-data-merge";
-import { TopicPicker } from "@/components/TopicPicker";
 import { TopicOverviewPanel } from "@/components/TopicOverviewPanel";
 import { AllTopicsOverviewPanel } from "@/components/AllTopicsOverviewPanel";
 import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTranscript";
@@ -58,14 +52,28 @@ export function TalkScreen({
   userId: string;
   topicHistory: Partial<Record<ConversationTopic, TopicHistoryEntry>>;
 }) {
-  const [topic, setTopic] = useState<ConversationTopic | null>(null);
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<LiveTranscriptTurn[]>([]);
   const [liveStructuredData, setLiveStructuredData] = useState<Record<string, unknown[]>>({});
+  const [topicsCovered, setTopicsCovered] = useState<ConversationTopic[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
   const seenToolCallIdsRef = useRef<Set<string>>(new Set());
+
+  const recordTopic = useCallback((topic: ConversationTopic) => {
+    setTopicsCovered((prev) => (prev.includes(topic) ? prev : [...prev, topic]));
+
+    const conversationId = conversationIdRef.current;
+    if (!conversationId) return;
+    fetch("/api/conversations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: conversationId, topic }),
+    }).catch((error) => {
+      console.error("Failed to record topic transfer", error);
+    });
+  }, []);
 
   useEffect(() => {
     const vapi = getVapiClient();
@@ -80,10 +88,16 @@ export function TalkScreen({
         transcriptType?: string;
         role?: string;
         transcript?: string;
+        toAssistant?: { name?: string };
       };
 
       if (m.type === "transcript" && m.transcriptType === "final" && m.role && m.transcript) {
         setTurns((prev) => [...prev, { role: m.role!, text: m.transcript! }]);
+      }
+
+      if (m.type === "transfer-update" && m.toAssistant?.name) {
+        const topic = TOPIC_BY_ASSISTANT_NAME[m.toAssistant.name];
+        if (topic) recordTopic(topic);
       }
 
       const toolCalls: RawToolCall[] = [];
@@ -145,18 +159,15 @@ export function TalkScreen({
       vapi.removeListener("call-end", handleCallEnd);
       vapi.removeListener("error", handleError);
     };
-  }, []);
+  }, [recordTopic]);
 
   const startCall = useCallback(async () => {
     setErrorMessage(null);
     setTurns([]);
     setLiveStructuredData({});
+    setTopicsCovered(["general"]);
     seenToolCallIdsRef.current.clear();
     setCallState("connecting");
-
-    // Nothing picked yet -- default to General rather than blocking the call.
-    const effectiveTopic = topic ?? "general";
-    setTopic(effectiveTopic);
 
     try {
       const conversationId = crypto.randomUUID();
@@ -165,21 +176,18 @@ export function TalkScreen({
       const created = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: conversationId, topic: effectiveTopic }),
+        body: JSON.stringify({ id: conversationId }),
       });
       if (!created.ok) throw new Error("Failed to create conversation record");
 
       const vapi = getVapiClient();
-      await vapi.start(
-        buildAssistantForTopic(effectiveTopic),
-        buildAssistantOverrides(userId, conversationId),
-      );
+      await vapi.start(undefined, undefined, buildSquad(userId, conversationId));
     } catch (error) {
       console.error("Failed to start call", error);
       setErrorMessage("Couldn't start the call. Please check your microphone permissions and try again.");
       setCallState("error");
     }
-  }, [userId, topic]);
+  }, [userId]);
 
   const stopCall = useCallback(() => {
     getVapiClient().stop();
@@ -193,9 +201,7 @@ export function TalkScreen({
   }, [isMuted]);
 
   const isCallActive = callState === "connecting" || callState === "connected";
-  // Non-null once a call is active -- startCall locks in a real topic before
-  // the call ever connects.
-  const activeTopic = topic ?? "general";
+  const specialistTopics = topicsCovered.filter((t) => t !== "general");
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-4xl">
@@ -209,35 +215,35 @@ export function TalkScreen({
 
       {errorMessage && <p className="text-sm text-red-600 text-center">{errorMessage}</p>}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-        <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 min-h-32">
-          {isCallActive ? (
+      {isCallActive ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 min-h-32">
             <LiveTranscript turns={turns} />
-          ) : (
-            <TopicPicker value={topic} onChange={setTopic} disabled={isCallActive} />
-          )}
-        </div>
+          </div>
 
-        <div className="flex flex-col gap-4">
-          {isCallActive ? (
-            <>
-              {activeTopic !== "general" && (
-                <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-                  <h2 className="text-sm font-medium mb-3">
-                    {TOPICS[activeTopic].liveCardsTitle ?? "Details captured so far"}
-                  </h2>
-                  <StructuredDataWidget topic={activeTopic} data={liveStructuredData} />
+          <div className="flex flex-col gap-4">
+            {specialistTopics.length === 0 ? (
+              <p className="text-sm text-stone-500 dark:text-stone-400">
+                Once we know what you&apos;d like to talk about, details will show up here.
+              </p>
+            ) : (
+              specialistTopics.map((t) => (
+                <div key={t} className="flex flex-col gap-4">
+                  <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
+                    <h2 className="text-sm font-medium mb-3">
+                      {TOPICS[t].liveCardsTitle ?? "Details captured so far"}
+                    </h2>
+                    <StructuredDataWidget topic={t} data={liveStructuredData} />
+                  </div>
+                  <TopicOverviewPanel topic={t} history={topicHistory[t]} />
                 </div>
-              )}
-              <TopicOverviewPanel topic={activeTopic} history={topicHistory[activeTopic]} />
-            </>
-          ) : topic === null ? (
-            <AllTopicsOverviewPanel topicHistory={topicHistory} />
-          ) : (
-            <TopicOverviewPanel topic={topic} history={topicHistory[topic]} />
-          )}
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <AllTopicsOverviewPanel topicHistory={topicHistory} />
+      )}
     </div>
   );
 }

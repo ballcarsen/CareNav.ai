@@ -1,5 +1,8 @@
 import type {
   CreateAssistantDTO,
+  CreateSquadDTO,
+  SquadMemberDTO,
+  TransferDestinationAssistant,
   AssistantOverrides,
   JsonSchema,
   OpenAIFunctionParameters,
@@ -36,7 +39,6 @@ interface TopicDefinition {
   systemPrompt: string;
   /** Heading for the live "captured so far" cards during a call on this topic. */
   liveCardsTitle?: string;
-  structuredDataSchema?: JsonSchema;
   liveTools?: LiveToolDefinition[];
 }
 
@@ -72,34 +74,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
 - Ask about past surgeries or hospitalizations, and roughly when they happened.
 - Ask about known allergies (medications, food, environmental).
 - Reflect back what you heard to confirm you got it right before moving to the next topic.
-- Whenever the caller states a condition, an allergy, or a past surgery/hospitalization, immediately call the matching record_* tool with that fact, in addition to responding normally.`,
-    structuredDataSchema: {
-      type: "object",
-      properties: {
-        conditions: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              status: { type: "string", enum: ["active", "past", "managed"] },
-              notes: { type: "string" },
-            },
-          },
-        },
-        allergies: { type: "array", items: { type: "string" } },
-        pastSurgeriesOrHospitalizations: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              description: { type: "string" },
-              year: { type: "string" },
-            },
-          },
-        },
-      },
-    },
+- Whenever the caller states a condition, an allergy, or a past surgery/hospitalization, immediately call the matching record_* tool with that fact, in addition to responding normally.
+- If the caller wants to switch to a different area (medications, symptoms, family history, or something logistical like appointments/insurance), transfer them to the right specialist rather than trying to cover it yourself.`,
     liveTools: [
       {
         toolName: "record_condition",
@@ -155,24 +131,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
 - For each symptom mentioned, ask when it started, how severe it feels to them (mild/moderate/severe, in their own words), and how it's affecting their day-to-day.
 - Do not speculate about causes, and do not tell them whether something sounds serious -- if they ask, redirect per your boundaries.
 - Reflect back what you heard to confirm accuracy.
-- Whenever the caller describes a symptom, immediately call the record_symptom tool with what you have so far, in addition to responding normally.`,
-    structuredDataSchema: {
-      type: "object",
-      properties: {
-        symptoms: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              description: { type: "string" },
-              onset: { type: "string" },
-              severity: { type: "string" },
-              notes: { type: "string" },
-            },
-          },
-        },
-      },
-    },
+- Whenever the caller describes a symptom, immediately call the record_symptom tool with what you have so far, in addition to responding normally.
+- If the caller wants to switch to a different area (medications, medical history, family history, or something logistical like appointments/insurance), transfer them to the right specialist rather than trying to cover it yourself.`,
     liveTools: [
       {
         toolName: "record_symptom",
@@ -202,24 +162,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
 - For each medication, ask its name, dosage, how often it's taken, and what it's for (as the person understands it -- do not confirm or correct their understanding).
 - Ask gently whether they ever miss doses, without judgment.
 - Never advise on whether a dose or medication is correct, whether to change anything, or about interactions -- redirect any such question per your boundaries.
-- Whenever the caller states a medication's name (and any dosage/frequency/purpose they give), immediately call the record_medication tool, in addition to responding normally.`,
-    structuredDataSchema: {
-      type: "object",
-      properties: {
-        medications: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              dosage: { type: "string" },
-              frequency: { type: "string" },
-              purpose: { type: "string" },
-            },
-          },
-        },
-      },
-    },
+- Whenever the caller states a medication's name (and any dosage/frequency/purpose they give), immediately call the record_medication tool, in addition to responding normally.
+- If the caller wants to switch to a different area (medical history, symptoms, family history, or something logistical like appointments/insurance), transfer them to the right specialist rather than trying to cover it yourself.`,
     liveTools: [
       {
         toolName: "record_medication",
@@ -249,23 +193,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
 - For each condition mentioned, ask which relative (parent, sibling, grandparent, etc.) and, if known, roughly what age it started.
 - Do not comment on what this might mean for the caller's own risk -- if asked, redirect per your boundaries.
 - Reflect back what you heard to confirm accuracy.
-- Whenever the caller states a family member's condition, immediately call the record_family_history_entry tool with that fact, in addition to responding normally.`,
-    structuredDataSchema: {
-      type: "object",
-      properties: {
-        familyHistory: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              relation: { type: "string" },
-              condition: { type: "string" },
-              notes: { type: "string" },
-            },
-          },
-        },
-      },
-    },
+- Whenever the caller states a family member's condition, immediately call the record_family_history_entry tool with that fact, in addition to responding normally.
+- If the caller wants to switch to a different area (medications, medical history, symptoms, or something logistical like appointments/insurance), transfer them to the right specialist rather than trying to cover it yourself.`,
     liveTools: [
       {
         toolName: "record_family_history_entry",
@@ -316,46 +245,118 @@ export const DATA_KEY_MERGE_KEYS: Partial<Record<ConversationTopic, Record<strin
     ]),
   );
 
+export function assistantNameForTopic(topic: ConversationTopic): string {
+  return `CareNav ${TOPICS[topic].label}`;
+}
+
+// Reverse lookup: assistant name (as seen on a squad transfer-update event) -> topic.
+export const TOPIC_BY_ASSISTANT_NAME: Record<string, ConversationTopic> = Object.fromEntries(
+  TOPIC_ORDER.map((topic) => [assistantNameForTopic(topic), topic]),
+);
+
+// Every member of the squad shares this one schema for post-call structured
+// extraction, derived from the live tools' item shapes (one array per
+// dataKey) -- since it's unverified which member's analysisPlan actually
+// governs a multi-assistant squad call, giving all of them the same full
+// schema means the result is right regardless of which one it turns out to be.
+const MERGED_STRUCTURED_DATA_SCHEMA: OpenAIFunctionParameters = {
+  type: "object",
+  properties: Object.fromEntries(
+    Object.values(TOPICS).flatMap(
+      (t) =>
+        t.liveTools?.map((lt): [string, JsonSchema] => [
+          lt.dataKey,
+          { type: "array", items: lt.scalarField ? { type: "string" } : lt.itemSchema },
+        ]) ?? [],
+    ),
+  ),
+};
+
+function buildModelBase(systemPrompt: string, liveTools?: LiveToolDefinition[]) {
+  return {
+    provider: "openai" as const,
+    model: "gpt-4o" as const,
+    messages: [{ role: "system" as const, content: systemPrompt }],
+    ...(liveTools
+      ? {
+          tools: liveTools.map((lt) => ({
+            type: "function" as const,
+            async: true,
+            function: {
+              name: lt.toolName,
+              description: lt.description,
+              parameters: lt.itemSchema,
+            },
+          })),
+        }
+      : {}),
+  };
+}
+
 export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistantDTO {
   const t = TOPICS[topic];
   return {
-    name: `CareNav ${t.label}`,
+    name: assistantNameForTopic(topic),
     firstMessage: t.firstMessage,
-    model: {
-      provider: "openai",
-      model: "gpt-4o",
-      messages: [{ role: "system", content: `${t.systemPrompt}\n\n${CLINICAL_BOUNDARIES}` }],
-      ...(t.liveTools
-        ? {
-            tools: t.liveTools.map((lt) => ({
-              type: "function" as const,
-              async: true,
-              function: {
-                name: lt.toolName,
-                description: lt.description,
-                parameters: lt.itemSchema,
-              },
-            })),
-          }
-        : {}),
-    },
-    voice: {
-      provider: "11labs",
-      voiceId: "sarah",
-    },
-    transcriber: {
-      provider: "deepgram",
-      model: "nova-2",
-      language: "en",
-    },
-    ...(t.structuredDataSchema
-      ? { analysisPlan: { structuredDataPlan: { enabled: true, schema: t.structuredDataSchema } } }
-      : {}),
+    model: buildModelBase(`${t.systemPrompt}\n\n${CLINICAL_BOUNDARIES}`, t.liveTools),
+    voice: { provider: "11labs", voiceId: "sarah" },
+    transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
+    analysisPlan: { structuredDataPlan: { enabled: true, schema: MERGED_STRUCTURED_DATA_SCHEMA } },
+  };
+}
+
+const ROUTER_NAME = "CareNav Router";
+
+function buildRouterAssistant(): CreateAssistantDTO {
+  const specialistList = TOPIC_ORDER.map(
+    (topic) => `- ${assistantNameForTopic(topic)}: ${TOPICS[topic].description}`,
+  ).join("\n");
+
+  const systemPrompt = `You are the front door for CareNav.ai's care navigator. Your only job is to briefly figure out what the caller wants help with, then transfer them to the right specialist -- you do not handle any requests yourself.
+
+Available specialists:
+${specialistList}
+
+As soon as you have a clear sense of what they want, transfer them right away. Keep your own turns short -- at most one brief clarifying question before transferring. If the caller wants help with more than one thing, transfer to whichever they mentioned first; they can be transferred again later for the rest.`;
+
+  return {
+    name: ROUTER_NAME,
+    firstMessage:
+      "Hi, I'm your care navigator. What can I help you with today -- appointments, referrals, insurance, and resources, or would you like to go over your medical history, symptoms, medications, or family history?",
+    model: buildModelBase(systemPrompt),
+    voice: { provider: "11labs", voiceId: "sarah" },
+    transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
+    analysisPlan: { structuredDataPlan: { enabled: true, schema: MERGED_STRUCTURED_DATA_SCHEMA } },
   };
 }
 
 export function buildAssistantOverrides(userId: string, conversationId: string): AssistantOverrides {
   return {
     metadata: { userId, conversationId },
+  };
+}
+
+export function buildSquad(userId: string, conversationId: string): CreateSquadDTO {
+  const destinationFor = (topic: ConversationTopic): TransferDestinationAssistant => ({
+    type: "assistant",
+    assistantName: assistantNameForTopic(topic),
+    description: TOPICS[topic].description,
+  });
+
+  const members: SquadMemberDTO[] = [
+    {
+      assistant: buildRouterAssistant(),
+      assistantDestinations: TOPIC_ORDER.map(destinationFor),
+    },
+    ...TOPIC_ORDER.map((topic) => ({
+      assistant: buildAssistantForTopic(topic),
+      assistantDestinations: TOPIC_ORDER.filter((t) => t !== topic).map(destinationFor),
+    })),
+  ];
+
+  return {
+    name: "CareNav Squad",
+    members,
+    membersOverrides: buildAssistantOverrides(userId, conversationId),
   };
 }
