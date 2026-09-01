@@ -5,16 +5,18 @@ import { getVapiClient } from "@/lib/vapi/client";
 import {
   buildAssistantForTopic,
   buildAssistantOverrides,
+  TOPICS,
   TOOL_LIVE_META,
 } from "@/lib/vapi/assistant-config";
 import { mergeStructuredDataArrays } from "@/lib/vapi/structured-data-merge";
 import { TopicPicker } from "@/components/TopicPicker";
 import { TopicOverviewPanel } from "@/components/TopicOverviewPanel";
+import { AllTopicsOverviewPanel } from "@/components/AllTopicsOverviewPanel";
 import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTranscript";
 import { StructuredDataWidget } from "@/components/StructuredDataWidget";
 import { CallControls } from "@/components/CallControls";
 import type { ConversationTopic } from "@/lib/types/database";
-import type { TopicHistoryEntry } from "@/app/talk/page";
+import type { RecentConversation, TopicHistoryEntry } from "@/app/talk/page";
 
 type CallState = "idle" | "connecting" | "connected" | "error";
 
@@ -52,11 +54,13 @@ function findToolCalls(node: unknown, out: RawToolCall[], seen: Set<string>) {
 export function TalkScreen({
   userId,
   topicHistory,
+  allRecent,
 }: {
   userId: string;
   topicHistory: Partial<Record<ConversationTopic, TopicHistoryEntry>>;
+  allRecent: RecentConversation[];
 }) {
-  const [topic, setTopic] = useState<ConversationTopic>("general");
+  const [topic, setTopic] = useState<ConversationTopic | null>(null);
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<LiveTranscriptTurn[]>([]);
   const [liveStructuredData, setLiveStructuredData] = useState<Record<string, unknown[]>>({});
@@ -135,6 +139,10 @@ export function TalkScreen({
     seenToolCallIdsRef.current.clear();
     setCallState("connecting");
 
+    // Nothing picked yet -- default to General rather than blocking the call.
+    const effectiveTopic = topic ?? "general";
+    setTopic(effectiveTopic);
+
     try {
       const conversationId = crypto.randomUUID();
       conversationIdRef.current = conversationId;
@@ -142,12 +150,15 @@ export function TalkScreen({
       const created = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: conversationId, topic }),
+        body: JSON.stringify({ id: conversationId, topic: effectiveTopic }),
       });
       if (!created.ok) throw new Error("Failed to create conversation record");
 
       const vapi = getVapiClient();
-      await vapi.start(buildAssistantForTopic(topic), buildAssistantOverrides(userId, conversationId));
+      await vapi.start(
+        buildAssistantForTopic(effectiveTopic),
+        buildAssistantOverrides(userId, conversationId),
+      );
     } catch (error) {
       console.error("Failed to start call", error);
       setErrorMessage("Couldn't start the call. Please check your microphone permissions and try again.");
@@ -167,6 +178,9 @@ export function TalkScreen({
   }, [isMuted]);
 
   const isCallActive = callState === "connecting" || callState === "connected";
+  // Non-null once a call is active -- startCall locks in a real topic before
+  // the call ever connects.
+  const activeTopic = topic ?? "general";
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-4xl">
@@ -191,12 +205,16 @@ export function TalkScreen({
 
         <div>
           {isCallActive ? (
-            topic !== "general" && (
+            activeTopic !== "general" && (
               <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-                <h2 className="text-sm font-medium mb-3">Details captured so far</h2>
-                <StructuredDataWidget topic={topic} data={liveStructuredData} />
+                <h2 className="text-sm font-medium mb-3">
+                  {TOPICS[activeTopic].liveCardsTitle ?? "Details captured so far"}
+                </h2>
+                <StructuredDataWidget topic={activeTopic} data={liveStructuredData} />
               </div>
             )
+          ) : topic === null ? (
+            <AllTopicsOverviewPanel topicHistory={topicHistory} allRecent={allRecent} />
           ) : (
             <TopicOverviewPanel topic={topic} history={topicHistory[topic]} />
           )}

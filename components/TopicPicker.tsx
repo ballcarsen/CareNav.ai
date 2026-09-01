@@ -1,22 +1,14 @@
 "use client";
 
-import { TOPICS } from "@/lib/vapi/assistant-config";
+import { TOPICS, TOPIC_ORDER } from "@/lib/vapi/assistant-config";
 import type { ConversationTopic } from "@/lib/types/database";
-
-const TOPIC_ORDER: ConversationTopic[] = [
-  "general",
-  "medical_history",
-  "symptoms",
-  "medications",
-  "family_history",
-];
 
 export function TopicPicker({
   value,
   onChange,
   disabled,
 }: {
-  value: ConversationTopic;
+  value: ConversationTopic | null;
   onChange: (topic: ConversationTopic) => void;
   disabled?: boolean;
 }) {

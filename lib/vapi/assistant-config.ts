@@ -34,9 +34,19 @@ interface TopicDefinition {
   description: string;
   firstMessage: string;
   systemPrompt: string;
+  /** Heading for the live "captured so far" cards during a call on this topic. */
+  liveCardsTitle?: string;
   structuredDataSchema?: JsonSchema;
   liveTools?: LiveToolDefinition[];
 }
+
+export const TOPIC_ORDER: ConversationTopic[] = [
+  "general",
+  "medical_history",
+  "symptoms",
+  "medications",
+  "family_history",
+];
 
 export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
   general: {
@@ -54,6 +64,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
   medical_history: {
     label: "Medical History",
     description: "Build a record of your current and past conditions.",
+    liveCardsTitle: "Medical history captured so far",
     firstMessage:
       "Hi, I'm your care navigator. I'd like to help put together your medical history -- current or past conditions, surgeries or hospital stays, and any allergies. What would you like to start with?",
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai helping a patient or their family member/caregiver build a self-reported medical history over voice. You are recording what they tell you, not diagnosing or evaluating it.
@@ -137,6 +148,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
   symptoms: {
     label: "Symptom Check-in",
     description: "Log what you're experiencing so your care team has it.",
+    liveCardsTitle: "Symptoms captured so far",
     firstMessage:
       "Hi, I'm your care navigator. I can take down what you're experiencing so it's ready to share with your care team. What's going on?",
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai taking a self-reported symptom check-in over voice, so it can be passed along to the person's care team. You are not assessing or diagnosing anything.
@@ -183,6 +195,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
   medications: {
     label: "Medications",
     description: "Track current medications, dosages, and schedules.",
+    liveCardsTitle: "Medications captured so far",
     firstMessage:
       "Hi, I'm your care navigator. Let's go through your current medications -- what you're taking, the dose, and how often. Ready when you are.",
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai helping a patient or their family member/caregiver record their current medications over voice. You are recording, not advising.
@@ -229,6 +242,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
   family_history: {
     label: "Family History",
     description: "Record hereditary conditions in your family.",
+    liveCardsTitle: "Family history captured so far",
     firstMessage:
       "Hi, I'm your care navigator. I'd like to note any health conditions that run in your family -- parents, siblings, grandparents. Where would you like to start?",
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai helping a patient or their family member/caregiver record their family medical history over voice. You are recording what they report, not interpreting hereditary risk.

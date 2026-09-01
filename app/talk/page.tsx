@@ -4,9 +4,15 @@ import { TalkScreen } from "@/components/TalkScreen";
 import { mergeStructuredDataBlobs } from "@/lib/vapi/structured-data-merge";
 import type { ConversationTopic } from "@/lib/types/database";
 
+export interface RecentConversation {
+  id: string;
+  summary: string | null;
+  started_at: string;
+}
+
 export interface TopicHistoryEntry {
   aggregate: Record<string, unknown> | null;
-  recent: { id: string; summary: string | null; started_at: string }[];
+  recent: RecentConversation[];
 }
 
 export default async function TalkPage() {
@@ -50,6 +56,12 @@ export default async function TalkPage() {
     };
   }
 
+  const allRecent: RecentConversation[] = (completedConversations ?? []).slice(0, 5).map((c) => ({
+    id: c.id,
+    summary: c.summary,
+    started_at: c.started_at,
+  }));
+
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8">
       <div className="text-center">
@@ -58,7 +70,7 @@ export default async function TalkPage() {
           Ask about appointments, referrals, insurance, or finding local resources.
         </p>
       </div>
-      <TalkScreen userId={user.id} topicHistory={topicHistory} />
+      <TalkScreen userId={user.id} topicHistory={topicHistory} allRecent={allRecent} />
     </main>
   );
 }
