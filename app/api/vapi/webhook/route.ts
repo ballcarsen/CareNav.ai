@@ -8,7 +8,12 @@ interface VapiWebhookBody {
     endedReason?: string;
     call?: {
       id?: string;
+      // Single-assistant calls carry metadata directly on assistantOverrides.
+      // Squad calls carry it on squad.membersOverrides instead -- confirmed by
+      // pulling a real squad call's raw data from Vapi's API, since this isn't
+      // documented in the type definitions.
       assistantOverrides?: { metadata?: { userId?: string; conversationId?: string } };
+      squad?: { membersOverrides?: { metadata?: { userId?: string; conversationId?: string } } };
     };
     artifact?: {
       messages?: { role: string; message: string; secondsFromStart?: number }[];
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
       })) ?? [];
 
   const supabase = createServiceClient();
-  const metadata = message.call?.assistantOverrides?.metadata;
+  const metadata = message.call?.assistantOverrides?.metadata ?? message.call?.squad?.membersOverrides?.metadata;
   const conversationId = metadata?.conversationId;
 
   const finalized = {

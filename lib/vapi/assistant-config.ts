@@ -17,6 +17,8 @@ const CLINICAL_BOUNDARIES = `STRICT BOUNDARIES:
 
 TONE: warm, patient, plain language, never rushed. Ask one question at a time. Confirm understanding before moving on. Keep responses short -- this is a voice conversation, not a chat.`;
 
+const TRANSFER_CONTINUITY_NOTE = `You may be joining this call partway through, after being transferred from another part of the conversation. If so, do not reintroduce yourself or greet the caller again -- just continue naturally from what they already said, as if you'd been part of the conversation the whole time.`;
+
 interface LiveToolDefinition {
   toolName: string;
   dataKey: string;
@@ -314,7 +316,16 @@ export function buildAssistantForTopic(
   return {
     name: assistantNameForTopic(topic),
     firstMessage,
-    model: buildModelBase(`${systemPrompt}\n\n${CLINICAL_BOUNDARIES}`, t.liveTools),
+    // Specialists are only ever reached via a transfer in this squad, never
+    // as the call's true entry point -- generate a natural continuation
+    // instead of speaking `firstMessage` verbatim, so the caller doesn't hear
+    // "Hi, I'm your care navigator" a second time after already hearing it
+    // from the router.
+    firstMessageMode: "assistant-speaks-first-with-model-generated-message",
+    model: buildModelBase(
+      `${systemPrompt}\n\n${TRANSFER_CONTINUITY_NOTE}\n\n${CLINICAL_BOUNDARIES}`,
+      t.liveTools,
+    ),
     voice: { provider: "11labs", voiceId: "sarah" },
     transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
     analysisPlan: { structuredDataPlan: { enabled: true, schema: MERGED_STRUCTURED_DATA_SCHEMA } },
@@ -362,6 +373,11 @@ export function buildSquad(
     type: "assistant",
     assistantName: assistantNameForTopic(topic),
     description: resolveTopicText(TOPICS[topic].description, overrides?.[topic]?.description),
+    // Silent handoff -- paired with firstMessageMode on the destination
+    // assistant (see buildAssistantForTopic) so the transfer is seamless
+    // instead of announced ("Transferring the call now") followed by a
+    // repeated introduction.
+    message: "",
   });
 
   const members: SquadMemberDTO[] = [
