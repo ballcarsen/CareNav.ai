@@ -1,5 +1,6 @@
 import type { Database } from "@/lib/types/database";
 import { TOPICS } from "@/lib/vapi/assistant-config";
+import { StructuredDataWidget } from "@/components/StructuredDataWidget";
 
 type Conversation = Database["public"]["Tables"]["conversations"]["Row"];
 
@@ -31,10 +32,8 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
 
       {conversation.structured_data && (
         <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-          <h2 className="text-sm font-medium mb-2">Extracted details</h2>
-          <pre className="text-xs whitespace-pre-wrap break-words text-gray-600 dark:text-gray-300">
-            {JSON.stringify(conversation.structured_data, null, 2)}
-          </pre>
+          <h2 className="text-sm font-medium mb-3">Extracted details</h2>
+          <StructuredDataWidget topic={conversation.topic} data={conversation.structured_data} />
         </div>
       )}
 

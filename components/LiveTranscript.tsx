@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 export interface LiveTranscriptTurn {
   role: string;
   text: string;
 }
 
 export function LiveTranscript({ turns }: { turns: LiveTranscriptTurn[] }) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns]);
+
   if (turns.length === 0) {
     return (
       <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -31,6 +39,7 @@ export function LiveTranscript({ turns }: { turns: LiveTranscriptTurn[] }) {
           {turn.text}
         </div>
       ))}
+      <div ref={bottomRef} />
     </div>
   );
 }

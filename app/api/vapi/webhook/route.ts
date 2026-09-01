@@ -17,6 +17,7 @@ interface VapiWebhookBody {
       summary?: string;
       structuredData?: Record<string, unknown>;
     };
+    toolCallList?: { id: string; function: { name: string; arguments: string } }[];
   };
 }
 
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as VapiWebhookBody;
   const { message } = body;
+
+  // Live "record_*" tool calls (see lib/vapi/assistant-config.ts) are async
+  // and observed client-side for the live cards on the Talk page -- this
+  // reply is just a well-formed no-op ack so nothing looks broken in Vapi's
+  // dashboard logs. It doesn't persist anything; that stays end-of-call-only.
+  if (message.type === "tool-calls") {
+    const results = (message.toolCallList ?? []).map((tc) => ({ toolCallId: tc.id, result: "ok" }));
+    return NextResponse.json({ results });
+  }
 
   if (message.type !== "end-of-call-report") {
     return NextResponse.json({ received: true });

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVapiClient } from "@/lib/vapi/client";
-import { buildAssistantForTopic, buildAssistantOverrides } from "@/lib/vapi/assistant-config";
+import { buildAssistantForTopic, buildAssistantOverrides, TOOL_DATA_KEYS } from "@/lib/vapi/assistant-config";
 import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTranscript";
+import { StructuredDataWidget } from "@/components/StructuredDataWidget";
 import type { ConversationTopic } from "@/lib/types/database";
 
 type CallState = "idle" | "connecting" | "connected" | "error";
@@ -19,6 +20,7 @@ export function StartStopCallButton({
 }) {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<LiveTranscriptTurn[]>([]);
+  const [liveStructuredData, setLiveStructuredData] = useState<Record<string, unknown[]>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
 
@@ -35,9 +37,27 @@ export function StartStopCallButton({
         transcriptType?: string;
         role?: string;
         transcript?: string;
+        toolCallList?: { id: string; function: { name: string; arguments: string } }[];
       };
+
       if (m.type === "transcript" && m.transcriptType === "final" && m.role && m.transcript) {
         setTurns((prev) => [...prev, { role: m.role!, text: m.transcript! }]);
+      }
+
+      if (m.type === "tool-calls" && m.toolCallList) {
+        for (const call of m.toolCallList) {
+          const dataKey = TOOL_DATA_KEYS[call.function.name];
+          if (!dataKey) continue;
+          try {
+            const entry = JSON.parse(call.function.arguments);
+            setLiveStructuredData((prev) => ({
+              ...prev,
+              [dataKey]: [...(prev[dataKey] ?? []), entry],
+            }));
+          } catch (error) {
+            console.error("Failed to parse tool call arguments", error);
+          }
+        }
       }
     };
 
@@ -73,6 +93,7 @@ export function StartStopCallButton({
   const startCall = useCallback(async () => {
     setErrorMessage(null);
     setTurns([]);
+    setLiveStructuredData({});
     setCallState("connecting");
 
     try {
@@ -129,6 +150,13 @@ export function StartStopCallButton({
       <div className="rounded-lg border border-black/10 dark:border-white/10 p-4 min-h-32">
         <LiveTranscript turns={turns} />
       </div>
+
+      {topic !== "general" && (turns.length > 0 || callState !== "idle") && (
+        <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
+          <h2 className="text-sm font-medium mb-3">Details captured so far</h2>
+          <StructuredDataWidget topic={topic} data={liveStructuredData} />
+        </div>
+      )}
     </div>
   );
 }

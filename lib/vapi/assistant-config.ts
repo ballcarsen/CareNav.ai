@@ -1,4 +1,9 @@
-import type { CreateAssistantDTO, AssistantOverrides, JsonSchema } from "@vapi-ai/web/dist/api";
+import type {
+  CreateAssistantDTO,
+  AssistantOverrides,
+  JsonSchema,
+  OpenAIFunctionParameters,
+} from "@vapi-ai/web/dist/api";
 import type { ConversationTopic } from "@/lib/types/database";
 
 const CLINICAL_BOUNDARIES = `STRICT BOUNDARIES:
@@ -9,12 +14,20 @@ const CLINICAL_BOUNDARIES = `STRICT BOUNDARIES:
 
 TONE: warm, patient, plain language, never rushed. Ask one question at a time. Confirm understanding before moving on. Keep responses short -- this is a voice conversation, not a chat.`;
 
+interface LiveToolDefinition {
+  toolName: string;
+  dataKey: string;
+  description: string;
+  itemSchema: OpenAIFunctionParameters;
+}
+
 interface TopicDefinition {
   label: string;
   description: string;
   firstMessage: string;
   systemPrompt: string;
   structuredDataSchema?: JsonSchema;
+  liveTools?: LiveToolDefinition[];
 }
 
 export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
@@ -39,7 +52,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
 - Ask about current and past medical conditions (what a doctor has told them, or what's on their chart), one at a time.
 - Ask about past surgeries or hospitalizations, and roughly when they happened.
 - Ask about known allergies (medications, food, environmental).
-- Reflect back what you heard to confirm you got it right before moving to the next topic.`,
+- Reflect back what you heard to confirm you got it right before moving to the next topic.
+- Whenever the caller states a condition, an allergy, or a past surgery/hospitalization, immediately call the matching record_* tool with that fact, in addition to responding normally.`,
     structuredDataSchema: {
       type: "object",
       properties: {
@@ -67,6 +81,47 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
         },
       },
     },
+    liveTools: [
+      {
+        toolName: "record_condition",
+        dataKey: "conditions",
+        description: "Record a single current or past medical condition the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            status: { type: "string", enum: ["active", "past", "managed"] },
+            notes: { type: "string" },
+          },
+          required: ["name"],
+        },
+      },
+      {
+        toolName: "record_allergy",
+        dataKey: "allergies",
+        description: "Record a single allergy the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            allergy: { type: "string" },
+          },
+          required: ["allergy"],
+        },
+      },
+      {
+        toolName: "record_surgery_or_hospitalization",
+        dataKey: "pastSurgeriesOrHospitalizations",
+        description: "Record a single past surgery or hospitalization the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            year: { type: "string" },
+          },
+          required: ["description"],
+        },
+      },
+    ],
   },
   symptoms: {
     label: "Symptom Check-in",
@@ -76,7 +131,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai taking a self-reported symptom check-in over voice, so it can be passed along to the person's care team. You are not assessing or diagnosing anything.
 - For each symptom mentioned, ask when it started, how severe it feels to them (mild/moderate/severe, in their own words), and how it's affecting their day-to-day.
 - Do not speculate about causes, and do not tell them whether something sounds serious -- if they ask, redirect per your boundaries.
-- Reflect back what you heard to confirm accuracy.`,
+- Reflect back what you heard to confirm accuracy.
+- Whenever the caller describes a symptom, immediately call the record_symptom tool with what you have so far, in addition to responding normally.`,
     structuredDataSchema: {
       type: "object",
       properties: {
@@ -94,6 +150,23 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
         },
       },
     },
+    liveTools: [
+      {
+        toolName: "record_symptom",
+        dataKey: "symptoms",
+        description: "Record a single symptom the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            onset: { type: "string" },
+            severity: { type: "string" },
+            notes: { type: "string" },
+          },
+          required: ["description"],
+        },
+      },
+    ],
   },
   medications: {
     label: "Medications",
@@ -103,7 +176,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai helping a patient or their family member/caregiver record their current medications over voice. You are recording, not advising.
 - For each medication, ask its name, dosage, how often it's taken, and what it's for (as the person understands it -- do not confirm or correct their understanding).
 - Ask gently whether they ever miss doses, without judgment.
-- Never advise on whether a dose or medication is correct, whether to change anything, or about interactions -- redirect any such question per your boundaries.`,
+- Never advise on whether a dose or medication is correct, whether to change anything, or about interactions -- redirect any such question per your boundaries.
+- Whenever the caller states a medication's name (and any dosage/frequency/purpose they give), immediately call the record_medication tool, in addition to responding normally.`,
     structuredDataSchema: {
       type: "object",
       properties: {
@@ -121,6 +195,23 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
         },
       },
     },
+    liveTools: [
+      {
+        toolName: "record_medication",
+        dataKey: "medications",
+        description: "Record a single medication the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            dosage: { type: "string" },
+            frequency: { type: "string" },
+            purpose: { type: "string" },
+          },
+          required: ["name"],
+        },
+      },
+    ],
   },
   family_history: {
     label: "Family History",
@@ -130,7 +221,8 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
     systemPrompt: `You are a non-clinical care navigator for CareNav.ai helping a patient or their family member/caregiver record their family medical history over voice. You are recording what they report, not interpreting hereditary risk.
 - For each condition mentioned, ask which relative (parent, sibling, grandparent, etc.) and, if known, roughly what age it started.
 - Do not comment on what this might mean for the caller's own risk -- if asked, redirect per your boundaries.
-- Reflect back what you heard to confirm accuracy.`,
+- Reflect back what you heard to confirm accuracy.
+- Whenever the caller states a family member's condition, immediately call the record_family_history_entry tool with that fact, in addition to responding normally.`,
     structuredDataSchema: {
       type: "object",
       properties: {
@@ -147,8 +239,30 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
         },
       },
     },
+    liveTools: [
+      {
+        toolName: "record_family_history_entry",
+        dataKey: "familyHistory",
+        description: "Record a single family medical history entry the caller reported.",
+        itemSchema: {
+          type: "object",
+          properties: {
+            relation: { type: "string" },
+            condition: { type: "string" },
+            notes: { type: "string" },
+          },
+          required: ["condition"],
+        },
+      },
+    ],
   },
 };
+
+// Flattened tool name -> data key, so the client can route an incoming
+// tool-calls event to the right array without knowing which topic it's for.
+export const TOOL_DATA_KEYS: Record<string, string> = Object.fromEntries(
+  Object.values(TOPICS).flatMap((t) => t.liveTools?.map((lt) => [lt.toolName, lt.dataKey]) ?? []),
+);
 
 export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistantDTO {
   const t = TOPICS[topic];
@@ -159,6 +273,19 @@ export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistan
       provider: "openai",
       model: "gpt-4o",
       messages: [{ role: "system", content: `${t.systemPrompt}\n\n${CLINICAL_BOUNDARIES}` }],
+      ...(t.liveTools
+        ? {
+            tools: t.liveTools.map((lt) => ({
+              type: "function" as const,
+              async: true,
+              function: {
+                name: lt.toolName,
+                description: lt.description,
+                parameters: lt.itemSchema,
+              },
+            })),
+          }
+        : {}),
     },
     voice: {
       provider: "11labs",
