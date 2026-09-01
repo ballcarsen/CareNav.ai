@@ -24,7 +24,7 @@ export function AllTopicsOverviewPanel({
         ))
       ) : (
         <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             Pick a topic to get started, or select one above to see what&apos;s been recorded so far.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function AllTopicsOverviewPanel({
                   href={`/history/${c.id}`}
                   className="block py-2 hover:bg-black/[.02] dark:hover:bg-white/[.03] -mx-2 px-2 rounded-md"
                 >
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  <span className="block text-xs text-stone-500 dark:text-stone-400">
                     {new Date(c.started_at).toLocaleString()}
                   </span>
                   <span className="block text-sm line-clamp-2">
@@ -51,7 +51,7 @@ export function AllTopicsOverviewPanel({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No conversations yet.</p>
+          <p className="text-sm text-stone-500 dark:text-stone-400">No conversations yet.</p>
         )}
       </div>
     </div>

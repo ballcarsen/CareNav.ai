@@ -16,7 +16,7 @@ export function LiveTranscript({ turns }: { turns: LiveTranscriptTurn[] }) {
 
   if (turns.length === 0) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-stone-500 dark:text-stone-400">
         Your conversation will appear here once it starts.
       </p>
     );
@@ -29,8 +29,8 @@ export function LiveTranscript({ turns }: { turns: LiveTranscriptTurn[] }) {
           key={i}
           className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
             turn.role === "assistant"
-              ? "self-start bg-gray-100 dark:bg-gray-800"
-              : "self-end bg-blue-100 dark:bg-blue-900"
+              ? "self-start bg-stone-100 dark:bg-stone-800"
+              : "self-end bg-amber-100 dark:bg-amber-900"
           }`}
         >
           <span className="block text-xs font-medium opacity-60 mb-0.5">

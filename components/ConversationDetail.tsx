@@ -20,10 +20,10 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
           >
             {conversation.status}
           </span>
-          <span className="text-xs rounded-full px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+          <span className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
             {TOPICS[conversation.topic]?.label ?? conversation.topic}
           </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-stone-500 dark:text-stone-400">
             {new Date(conversation.started_at).toLocaleString()}
           </span>
         </div>
@@ -44,8 +44,8 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
               key={i}
               className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                 turn.role === "assistant" || turn.role === "bot"
-                  ? "self-start bg-gray-100 dark:bg-gray-800"
-                  : "self-end bg-blue-100 dark:bg-blue-900"
+                  ? "self-start bg-stone-100 dark:bg-stone-800"
+                  : "self-end bg-amber-100 dark:bg-amber-900"
               }`}
             >
               <span className="block text-xs font-medium opacity-60 mb-0.5">
@@ -55,7 +55,7 @@ export function ConversationDetail({ conversation }: { conversation: Conversatio
             </div>
           ))
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-stone-500 dark:text-stone-400">
             No transcript available for this conversation.
           </p>
         )}

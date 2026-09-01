@@ -26,7 +26,7 @@ export function Nav() {
         <Link href="/history" className="hover:underline">
           History
         </Link>
-        <button onClick={handleSignOut} className="hover:underline text-gray-500 dark:text-gray-400">
+        <button onClick={handleSignOut} className="hover:underline text-stone-500 dark:text-stone-400">
           Sign out
         </button>
       </div>

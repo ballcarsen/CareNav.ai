@@ -31,7 +31,7 @@ export default async function ConversationDetailPage({
 
   return (
     <main className="flex flex-1 flex-col max-w-2xl mx-auto w-full p-8">
-      <Link href="/history" className="text-sm text-blue-600 hover:underline mb-6">
+      <Link href="/history" className="text-sm text-amber-700 dark:text-amber-500 hover:underline mb-6">
         ← Back to history
       </Link>
       <ConversationDetail conversation={conversation} />

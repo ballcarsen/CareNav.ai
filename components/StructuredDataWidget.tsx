@@ -2,9 +2,9 @@ import type { ConversationTopic } from "@/lib/types/database";
 
 function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "active" | "past" | "managed" }) {
   const toneClasses: Record<string, string> = {
-    neutral: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300",
+    neutral: "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300",
     active: "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300",
-    past: "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400",
+    past: "bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400",
     managed: "bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300",
   };
   return (
@@ -15,8 +15,8 @@ function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
-    <span className="text-xs text-gray-500 dark:text-gray-400">
-      {label}: <span className="text-gray-700 dark:text-gray-200">{value}</span>
+    <span className="text-xs text-stone-500 dark:text-stone-400">
+      {label}: <span className="text-stone-700 dark:text-stone-200">{value}</span>
     </span>
   );
 }
@@ -30,7 +30,7 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function EmptyState() {
-  return <p className="text-sm text-gray-500 dark:text-gray-400">Nothing extracted for this call.</p>;
+  return <p className="text-sm text-stone-500 dark:text-stone-400">Nothing extracted for this call.</p>;
 }
 
 interface Condition {
@@ -55,7 +55,7 @@ function MedicalHistoryWidget({ data }: { data: Record<string, unknown> }) {
     <div className="flex flex-col gap-4">
       {conditions.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <h3 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
             Conditions
           </h3>
           {conditions.map((c, i) => (
@@ -68,7 +68,7 @@ function MedicalHistoryWidget({ data }: { data: Record<string, unknown> }) {
                   </Pill>
                 )}
               </div>
-              {c.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{c.notes}</p>}
+              {c.notes && <p className="text-xs text-stone-500 dark:text-stone-400">{c.notes}</p>}
             </Card>
           ))}
         </div>
@@ -76,7 +76,7 @@ function MedicalHistoryWidget({ data }: { data: Record<string, unknown> }) {
 
       {allergies.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <h3 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
             Allergies
           </h3>
           <div className="flex flex-wrap gap-1.5">
@@ -89,14 +89,14 @@ function MedicalHistoryWidget({ data }: { data: Record<string, unknown> }) {
 
       {surgeries.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          <h3 className="text-xs font-medium text-stone-500 dark:text-stone-400 uppercase tracking-wide">
             Surgeries &amp; hospitalizations
           </h3>
           {surgeries.map((s, i) => (
             <Card key={i}>
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm">{s.description ?? "Unspecified"}</span>
-                {s.year && <span className="text-xs text-gray-500 dark:text-gray-400">{s.year}</span>}
+                {s.year && <span className="text-xs text-stone-500 dark:text-stone-400">{s.year}</span>}
               </div>
             </Card>
           ))}
@@ -127,7 +127,7 @@ function SymptomsWidget({ data }: { data: Record<string, unknown> }) {
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             <Field label="Onset" value={s.onset} />
           </div>
-          {s.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{s.notes}</p>}
+          {s.notes && <p className="text-xs text-stone-500 dark:text-stone-400">{s.notes}</p>}
         </Card>
       ))}
     </div>
@@ -177,7 +177,7 @@ function FamilyHistoryWidget({ data }: { data: Record<string, unknown> }) {
             <span className="text-sm font-medium">{e.condition ?? "Unspecified condition"}</span>
             {e.relation && <Pill>{e.relation}</Pill>}
           </div>
-          {e.notes && <p className="text-xs text-gray-500 dark:text-gray-400">{e.notes}</p>}
+          {e.notes && <p className="text-xs text-stone-500 dark:text-stone-400">{e.notes}</p>}
         </Card>
       ))}
     </div>
@@ -202,7 +202,7 @@ export function StructuredDataWidget({
       return <FamilyHistoryWidget data={data} />;
     default:
       return (
-        <pre className="text-xs whitespace-pre-wrap break-words text-gray-600 dark:text-gray-300">
+        <pre className="text-xs whitespace-pre-wrap break-words text-stone-600 dark:text-stone-300">
           {JSON.stringify(data, null, 2)}
         </pre>
       );

@@ -14,7 +14,7 @@ function formatDuration(startedAt: string, endedAt: string | null): string {
 export function ConversationList({ conversations }: { conversations: Conversation[] }) {
   if (conversations.length === 0) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-stone-500 dark:text-stone-400">
         No conversations yet. Start one from the Talk page.
       </p>
     );
@@ -33,15 +33,15 @@ export function ConversationList({ conversations }: { conversations: Conversatio
                 {new Date(c.started_at).toLocaleString()}
               </span>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs rounded-full px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                <span className="text-xs rounded-full px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
                   {TOPICS[c.topic]?.label ?? c.topic}
                 </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-stone-500 dark:text-stone-400">
                   {formatDuration(c.started_at, c.ended_at)}
                 </span>
               </div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+            <p className="text-sm text-stone-600 dark:text-stone-300 line-clamp-2">
               {c.summary ?? (c.status === "in_progress" ? "In progress..." : "No summary available")}
             </p>
           </Link>

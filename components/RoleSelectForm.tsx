@@ -38,7 +38,7 @@ export function RoleSelectForm() {
             onClick={() => setRole("patient")}
             className={`flex-1 rounded-md border px-3 py-2 text-sm ${
               role === "patient"
-                ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
+                ? "border-amber-600 bg-amber-50 dark:bg-amber-950"
                 : "border-black/10 dark:border-white/20"
             }`}
           >
@@ -49,7 +49,7 @@ export function RoleSelectForm() {
             onClick={() => setRole("family_member")}
             className={`flex-1 rounded-md border px-3 py-2 text-sm ${
               role === "family_member"
-                ? "border-blue-600 bg-blue-50 dark:bg-blue-950"
+                ? "border-amber-600 bg-amber-50 dark:bg-amber-950"
                 : "border-black/10 dark:border-white/20"
             }`}
           >
@@ -71,7 +71,7 @@ export function RoleSelectForm() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
+        className="rounded-md bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
       >
         {loading ? "Saving..." : "Continue"}
       </button>

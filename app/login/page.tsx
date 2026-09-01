@@ -45,7 +45,7 @@ export default function LoginPage() {
     <main className="flex flex-1 flex-col items-center justify-center p-8">
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold text-center mb-1">CareNav.ai</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
+        <p className="text-sm text-stone-500 dark:text-stone-400 text-center mb-6">
           {mode === "sign-in" ? "Sign in to talk with your care navigator." : "Create an account to get started."}
         </p>
 
@@ -76,7 +76,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
+              className="rounded-md bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white px-4 py-2 text-sm font-medium"
             >
               {loading ? "Please wait..." : mode === "sign-in" ? "Sign in" : "Sign up"}
             </button>
@@ -89,7 +89,7 @@ export default function LoginPage() {
               setMode(mode === "sign-in" ? "sign-up" : "sign-in");
               setError(null);
             }}
-            className="text-sm text-blue-600 hover:underline mt-4 block mx-auto"
+            className="text-sm text-amber-700 dark:text-amber-500 hover:underline mt-4 block mx-auto"
           >
             {mode === "sign-in" ? "Need an account? Sign up" : "Already have an account? Sign in"}
           </button>

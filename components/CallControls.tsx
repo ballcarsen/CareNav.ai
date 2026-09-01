@@ -39,7 +39,7 @@ export function CallControls({
       <button
         onClick={onStart}
         disabled={callState === "connecting"}
-        className="rounded-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-4 font-medium transition-colors"
+        className="rounded-full bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white px-8 py-4 font-medium transition-colors"
       >
         {callState === "connecting" ? "Connecting..." : "Start conversation"}
       </button>
