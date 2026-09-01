@@ -203,16 +203,19 @@ export function TalkScreen({
           )}
         </div>
 
-        <div>
+        <div className="flex flex-col gap-4">
           {isCallActive ? (
-            activeTopic !== "general" && (
-              <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
-                <h2 className="text-sm font-medium mb-3">
-                  {TOPICS[activeTopic].liveCardsTitle ?? "Details captured so far"}
-                </h2>
-                <StructuredDataWidget topic={activeTopic} data={liveStructuredData} />
-              </div>
-            )
+            <>
+              {activeTopic !== "general" && (
+                <div className="rounded-lg border border-black/10 dark:border-white/10 p-4">
+                  <h2 className="text-sm font-medium mb-3">
+                    {TOPICS[activeTopic].liveCardsTitle ?? "Details captured so far"}
+                  </h2>
+                  <StructuredDataWidget topic={activeTopic} data={liveStructuredData} />
+                </div>
+              )}
+              <TopicOverviewPanel topic={activeTopic} history={topicHistory[activeTopic]} />
+            </>
           ) : topic === null ? (
             <AllTopicsOverviewPanel topicHistory={topicHistory} allRecent={allRecent} />
           ) : (
