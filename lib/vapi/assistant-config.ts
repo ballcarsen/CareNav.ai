@@ -19,6 +19,14 @@ interface LiveToolDefinition {
   dataKey: string;
   description: string;
   itemSchema: OpenAIFunctionParameters;
+  /** Field to match an incoming call against an already-recorded entry, so a
+   * later call filling in more detail (e.g. dosage after just a name) updates
+   * the existing card instead of adding a duplicate. Omit if entries can't
+   * reasonably be deduped this way. */
+  mergeKey?: string;
+  /** If set, the single named argument is stored as a plain string (matching
+   * the post-call schema's flat string array) instead of the whole object. */
+  scalarField?: string;
 }
 
 interface TopicDefinition {
@@ -95,6 +103,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["name"],
         },
+        mergeKey: "name",
       },
       {
         toolName: "record_allergy",
@@ -107,6 +116,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["allergy"],
         },
+        scalarField: "allergy",
       },
       {
         toolName: "record_surgery_or_hospitalization",
@@ -120,6 +130,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["description"],
         },
+        mergeKey: "description",
       },
     ],
   },
@@ -165,6 +176,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["description"],
         },
+        mergeKey: "description",
       },
     ],
   },
@@ -210,6 +222,7 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["name"],
         },
+        mergeKey: "name",
       },
     ],
   },
@@ -253,15 +266,28 @@ export const TOPICS: Record<ConversationTopic, TopicDefinition> = {
           },
           required: ["condition"],
         },
+        mergeKey: "condition",
       },
     ],
   },
 };
 
-// Flattened tool name -> data key, so the client can route an incoming
-// tool-calls event to the right array without knowing which topic it's for.
-export const TOOL_DATA_KEYS: Record<string, string> = Object.fromEntries(
-  Object.values(TOPICS).flatMap((t) => t.liveTools?.map((lt) => [lt.toolName, lt.dataKey]) ?? []),
+export interface ToolLiveMeta {
+  dataKey: string;
+  mergeKey?: string;
+  scalarField?: string;
+}
+
+// Flattened tool name -> routing/merge info, so the client can process an
+// incoming tool call into the right array without knowing which topic it's for.
+export const TOOL_LIVE_META: Record<string, ToolLiveMeta> = Object.fromEntries(
+  Object.values(TOPICS).flatMap(
+    (t) =>
+      t.liveTools?.map((lt) => [
+        lt.toolName,
+        { dataKey: lt.dataKey, mergeKey: lt.mergeKey, scalarField: lt.scalarField },
+      ]) ?? [],
+  ),
 );
 
 export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistantDTO {

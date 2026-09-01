@@ -2,12 +2,81 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVapiClient } from "@/lib/vapi/client";
-import { buildAssistantForTopic, buildAssistantOverrides, TOOL_DATA_KEYS } from "@/lib/vapi/assistant-config";
+import { buildAssistantForTopic, buildAssistantOverrides, TOOL_LIVE_META } from "@/lib/vapi/assistant-config";
 import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTranscript";
 import { StructuredDataWidget } from "@/components/StructuredDataWidget";
 import type { ConversationTopic } from "@/lib/types/database";
 
 type CallState = "idle" | "connecting" | "connected" | "error";
+
+interface RawToolCall {
+  id: string;
+  name: string;
+  args: string;
+}
+
+// Vapi's exact client-message envelope for tool calls isn't worth hard-coding
+// against -- this walks the whole message looking for `{ function: { name,
+// arguments } }` wherever it appears, so it keeps working even if the
+// wrapping shape (field name, nesting) differs from what's documented.
+function findToolCalls(node: unknown, out: RawToolCall[], seen: Set<string>) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) {
+    for (const item of node) findToolCalls(item, out, seen);
+    return;
+  }
+  const obj = node as Record<string, unknown>;
+  const fn = obj.function as { name?: unknown; arguments?: unknown } | undefined;
+  if (fn && typeof fn.name === "string" && typeof fn.arguments === "string") {
+    const id = typeof obj.id === "string" ? obj.id : `${fn.name}:${fn.arguments}`;
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push({ id, name: fn.name, args: fn.arguments });
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    if (key === "function") continue;
+    findToolCalls(obj[key], out, seen);
+  }
+}
+
+function applyToolCallEntry(
+  prev: Record<string, unknown[]>,
+  dataKey: string,
+  mergeKey: string | undefined,
+  scalarField: string | undefined,
+  parsed: Record<string, unknown>,
+): Record<string, unknown[]> {
+  const existing = prev[dataKey] ?? [];
+
+  if (scalarField) {
+    const value = parsed[scalarField];
+    if (typeof value !== "string" || !value.trim()) return prev;
+    if (existing.includes(value)) return prev;
+    return { ...prev, [dataKey]: [...existing, value] };
+  }
+
+  if (mergeKey) {
+    const key = parsed[mergeKey];
+    if (typeof key === "string" && key.trim()) {
+      const index = existing.findIndex(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          typeof (item as Record<string, unknown>)[mergeKey] === "string" &&
+          ((item as Record<string, unknown>)[mergeKey] as string).trim().toLowerCase() ===
+            key.trim().toLowerCase(),
+      );
+      if (index !== -1) {
+        const merged = [...existing];
+        merged[index] = { ...(existing[index] as Record<string, unknown>), ...parsed };
+        return { ...prev, [dataKey]: merged };
+      }
+    }
+  }
+
+  return { ...prev, [dataKey]: [...existing, parsed] };
+}
 
 export function StartStopCallButton({
   userId,
@@ -23,6 +92,7 @@ export function StartStopCallButton({
   const [liveStructuredData, setLiveStructuredData] = useState<Record<string, unknown[]>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const conversationIdRef = useRef<string | null>(null);
+  const seenToolCallIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const vapi = getVapiClient();
@@ -37,26 +107,24 @@ export function StartStopCallButton({
         transcriptType?: string;
         role?: string;
         transcript?: string;
-        toolCallList?: { id: string; function: { name: string; arguments: string } }[];
       };
 
       if (m.type === "transcript" && m.transcriptType === "final" && m.role && m.transcript) {
         setTurns((prev) => [...prev, { role: m.role!, text: m.transcript! }]);
       }
 
-      if (m.type === "tool-calls" && m.toolCallList) {
-        for (const call of m.toolCallList) {
-          const dataKey = TOOL_DATA_KEYS[call.function.name];
-          if (!dataKey) continue;
-          try {
-            const entry = JSON.parse(call.function.arguments);
-            setLiveStructuredData((prev) => ({
-              ...prev,
-              [dataKey]: [...(prev[dataKey] ?? []), entry],
-            }));
-          } catch (error) {
-            console.error("Failed to parse tool call arguments", error);
-          }
+      const toolCalls: RawToolCall[] = [];
+      findToolCalls(message, toolCalls, seenToolCallIdsRef.current);
+      for (const call of toolCalls) {
+        const meta = TOOL_LIVE_META[call.name];
+        if (!meta) continue;
+        try {
+          const parsed = JSON.parse(call.args) as Record<string, unknown>;
+          setLiveStructuredData((prev) =>
+            applyToolCallEntry(prev, meta.dataKey, meta.mergeKey, meta.scalarField, parsed),
+          );
+        } catch (error) {
+          console.error("Failed to parse tool call arguments", error);
         }
       }
     };
@@ -94,6 +162,7 @@ export function StartStopCallButton({
     setErrorMessage(null);
     setTurns([]);
     setLiveStructuredData({});
+    seenToolCallIdsRef.current.clear();
     setCallState("connecting");
 
     try {
