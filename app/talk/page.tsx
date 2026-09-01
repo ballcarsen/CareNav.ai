@@ -35,9 +35,15 @@ export default async function TalkPage() {
 
   type CompletedConversation = NonNullable<typeof completedConversations>[number];
 
+  // "general" has no extraction schema/widget of its own, and is present on
+  // nearly every conversation (it's the router's default starting topic) --
+  // bucketing it here would pull in every other topic's fields too, since all
+  // squad members now share one merged post-call schema. Excluded entirely
+  // rather than filtered at render time, so there's nothing to aggregate.
   const byTopic = new Map<ConversationTopic, CompletedConversation[]>();
   for (const c of completedConversations ?? []) {
     for (const topic of c.topics) {
+      if (topic === "general") continue;
       const list = byTopic.get(topic) ?? [];
       list.push(c);
       byTopic.set(topic, list);
