@@ -16,7 +16,7 @@ import { LiveTranscript, type LiveTranscriptTurn } from "@/components/LiveTransc
 import { StructuredDataWidget } from "@/components/StructuredDataWidget";
 import { CallControls } from "@/components/CallControls";
 import type { ConversationTopic } from "@/lib/types/database";
-import type { RecentConversation, TopicHistoryEntry } from "@/app/talk/page";
+import type { TopicHistoryEntry } from "@/app/talk/page";
 
 type CallState = "idle" | "connecting" | "connected" | "error";
 
@@ -54,11 +54,9 @@ function findToolCalls(node: unknown, out: RawToolCall[], seen: Set<string>) {
 export function TalkScreen({
   userId,
   topicHistory,
-  allRecent,
 }: {
   userId: string;
   topicHistory: Partial<Record<ConversationTopic, TopicHistoryEntry>>;
-  allRecent: RecentConversation[];
 }) {
   const [topic, setTopic] = useState<ConversationTopic | null>(null);
   const [callState, setCallState] = useState<CallState>("idle");
@@ -234,7 +232,7 @@ export function TalkScreen({
               <TopicOverviewPanel topic={activeTopic} history={topicHistory[activeTopic]} />
             </>
           ) : topic === null ? (
-            <AllTopicsOverviewPanel topicHistory={topicHistory} allRecent={allRecent} />
+            <AllTopicsOverviewPanel topicHistory={topicHistory} />
           ) : (
             <TopicOverviewPanel topic={topic} history={topicHistory[topic]} />
           )}

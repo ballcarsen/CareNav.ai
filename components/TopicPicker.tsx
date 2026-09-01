@@ -9,7 +9,7 @@ export function TopicPicker({
   disabled,
 }: {
   value: ConversationTopic | null;
-  onChange: (topic: ConversationTopic) => void;
+  onChange: (topic: ConversationTopic | null) => void;
   disabled?: boolean;
 }) {
   return (
@@ -22,7 +22,7 @@ export function TopicPicker({
             key={topic}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(topic)}
+            onClick={() => onChange(selected ? null : topic)}
             className={`text-left rounded-md border px-3 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
               selected
                 ? "border-amber-600 bg-amber-50 dark:bg-amber-950"

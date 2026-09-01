@@ -56,21 +56,16 @@ export default async function TalkPage() {
     };
   }
 
-  const allRecent: RecentConversation[] = (completedConversations ?? []).slice(0, 5).map((c) => ({
-    id: c.id,
-    summary: c.summary,
-    started_at: c.started_at,
-  }));
-
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8">
       <div className="text-center">
         <h1 className="text-2xl font-semibold">Talk with your care navigator</h1>
         <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-          Ask about appointments, referrals, insurance, or finding local resources.
+          Get help with appointments, insurance, and resources, or build out your medical history,
+          symptoms, medications, and family history over voice.
         </p>
       </div>
-      <TalkScreen userId={user.id} topicHistory={topicHistory} allRecent={allRecent} />
+      <TalkScreen userId={user.id} topicHistory={topicHistory} />
     </main>
   );
 }
