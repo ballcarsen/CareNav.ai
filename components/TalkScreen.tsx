@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVapiClient } from "@/lib/vapi/client";
-import { buildSquad, TOPICS, TOPIC_BY_ASSISTANT_NAME, TOOL_LIVE_META } from "@/lib/vapi/assistant-config";
+import {
+  buildSquad,
+  TOPICS,
+  TOPIC_BY_ASSISTANT_NAME,
+  TOOL_LIVE_META,
+  type TopicOverrides,
+} from "@/lib/vapi/assistant-config";
 import { mergeStructuredDataArrays } from "@/lib/vapi/structured-data-merge";
 import { TopicOverviewPanel } from "@/components/TopicOverviewPanel";
 import { AllTopicsOverviewPanel } from "@/components/AllTopicsOverviewPanel";
@@ -48,9 +54,11 @@ function findToolCalls(node: unknown, out: RawToolCall[], seen: Set<string>) {
 export function TalkScreen({
   userId,
   topicHistory,
+  topicOverrides,
 }: {
   userId: string;
   topicHistory: Partial<Record<ConversationTopic, TopicHistoryEntry>>;
+  topicOverrides: TopicOverrides;
 }) {
   const [callState, setCallState] = useState<CallState>("idle");
   const [turns, setTurns] = useState<LiveTranscriptTurn[]>([]);
@@ -181,13 +189,13 @@ export function TalkScreen({
       if (!created.ok) throw new Error("Failed to create conversation record");
 
       const vapi = getVapiClient();
-      await vapi.start(undefined, undefined, buildSquad(userId, conversationId));
+      await vapi.start(undefined, undefined, buildSquad(userId, conversationId, topicOverrides));
     } catch (error) {
       console.error("Failed to start call", error);
       setErrorMessage("Couldn't start the call. Please check your microphone permissions and try again.");
       setCallState("error");
     }
-  }, [userId]);
+  }, [userId, topicOverrides]);
 
   const stopCall = useCallback(() => {
     getVapiClient().stop();

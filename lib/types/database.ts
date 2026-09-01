@@ -22,6 +22,7 @@ export interface Database {
           role: ProfileRole;
           display_name: string | null;
           onboarded_at: string | null;
+          is_admin: boolean;
           created_at: string;
         };
         Insert: {
@@ -29,6 +30,7 @@ export interface Database {
           role?: ProfileRole;
           display_name?: string | null;
           onboarded_at?: string | null;
+          is_admin?: boolean;
           created_at?: string;
         };
         Update: {
@@ -36,7 +38,35 @@ export interface Database {
           role?: ProfileRole;
           display_name?: string | null;
           onboarded_at?: string | null;
+          is_admin?: boolean;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      topic_overrides: {
+        Row: {
+          topic: ConversationTopic;
+          system_prompt: string | null;
+          first_message: string | null;
+          description: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          topic: ConversationTopic;
+          system_prompt?: string | null;
+          first_message?: string | null;
+          description?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          topic?: ConversationTopic;
+          system_prompt?: string | null;
+          first_message?: string | null;
+          description?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
         };
         Relationships: [];
       };

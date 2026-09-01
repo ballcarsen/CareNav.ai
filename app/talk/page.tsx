@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TalkScreen } from "@/components/TalkScreen";
 import { mergeStructuredDataBlobs } from "@/lib/vapi/structured-data-merge";
+import type { TopicOverrides } from "@/lib/vapi/assistant-config";
 import type { ConversationTopic } from "@/lib/types/database";
 
 export interface RecentConversation {
@@ -58,6 +59,17 @@ export default async function TalkPage() {
     };
   }
 
+  const { data: overrideRows } = await supabase.from("topic_overrides").select("*");
+
+  const topicOverrides: TopicOverrides = {};
+  for (const row of overrideRows ?? []) {
+    topicOverrides[row.topic] = {
+      systemPrompt: row.system_prompt,
+      firstMessage: row.first_message,
+      description: row.description,
+    };
+  }
+
   return (
     <main className="flex flex-1 flex-col items-center gap-6 p-8">
       <div className="text-center">
@@ -67,7 +79,7 @@ export default async function TalkPage() {
           symptoms, medications, and family history over voice.
         </p>
       </div>
-      <TalkScreen userId={user.id} topicHistory={topicHistory} />
+      <TalkScreen userId={user.id} topicHistory={topicHistory} topicOverrides={topicOverrides} />
     </main>
   );
 }

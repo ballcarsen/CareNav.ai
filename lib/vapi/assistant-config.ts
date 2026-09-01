@@ -272,6 +272,17 @@ const MERGED_STRUCTURED_DATA_SCHEMA: OpenAIFunctionParameters = {
   ),
 };
 
+export interface TopicOverride {
+  systemPrompt: string | null;
+  firstMessage: string | null;
+  description: string | null;
+}
+export type TopicOverrides = Partial<Record<ConversationTopic, TopicOverride>>;
+
+function resolveTopicText(base: string, override: string | null | undefined): string {
+  return override && override.trim() ? override : base;
+}
+
 function buildModelBase(systemPrompt: string, liveTools?: LiveToolDefinition[]) {
   return {
     provider: "openai" as const,
@@ -293,12 +304,17 @@ function buildModelBase(systemPrompt: string, liveTools?: LiveToolDefinition[]) 
   };
 }
 
-export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistantDTO {
+export function buildAssistantForTopic(
+  topic: ConversationTopic,
+  override?: TopicOverride,
+): CreateAssistantDTO {
   const t = TOPICS[topic];
+  const systemPrompt = resolveTopicText(t.systemPrompt, override?.systemPrompt);
+  const firstMessage = resolveTopicText(t.firstMessage, override?.firstMessage);
   return {
     name: assistantNameForTopic(topic),
-    firstMessage: t.firstMessage,
-    model: buildModelBase(`${t.systemPrompt}\n\n${CLINICAL_BOUNDARIES}`, t.liveTools),
+    firstMessage,
+    model: buildModelBase(`${systemPrompt}\n\n${CLINICAL_BOUNDARIES}`, t.liveTools),
     voice: { provider: "11labs", voiceId: "sarah" },
     transcriber: { provider: "deepgram", model: "nova-2", language: "en" },
     analysisPlan: { structuredDataPlan: { enabled: true, schema: MERGED_STRUCTURED_DATA_SCHEMA } },
@@ -307,9 +323,10 @@ export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistan
 
 const ROUTER_NAME = "CareNav Router";
 
-function buildRouterAssistant(): CreateAssistantDTO {
+function buildRouterAssistant(overrides?: TopicOverrides): CreateAssistantDTO {
   const specialistList = TOPIC_ORDER.map(
-    (topic) => `- ${assistantNameForTopic(topic)}: ${TOPICS[topic].description}`,
+    (topic) =>
+      `- ${assistantNameForTopic(topic)}: ${resolveTopicText(TOPICS[topic].description, overrides?.[topic]?.description)}`,
   ).join("\n");
 
   const systemPrompt = `You are the front door for CareNav.ai's care navigator. Your only job is to briefly figure out what the caller wants help with, then transfer them to the right specialist -- you do not handle any requests yourself.
@@ -336,20 +353,24 @@ export function buildAssistantOverrides(userId: string, conversationId: string):
   };
 }
 
-export function buildSquad(userId: string, conversationId: string): CreateSquadDTO {
+export function buildSquad(
+  userId: string,
+  conversationId: string,
+  overrides?: TopicOverrides,
+): CreateSquadDTO {
   const destinationFor = (topic: ConversationTopic): TransferDestinationAssistant => ({
     type: "assistant",
     assistantName: assistantNameForTopic(topic),
-    description: TOPICS[topic].description,
+    description: resolveTopicText(TOPICS[topic].description, overrides?.[topic]?.description),
   });
 
   const members: SquadMemberDTO[] = [
     {
-      assistant: buildRouterAssistant(),
+      assistant: buildRouterAssistant(overrides),
       assistantDestinations: TOPIC_ORDER.map(destinationFor),
     },
     ...TOPIC_ORDER.map((topic) => ({
-      assistant: buildAssistantForTopic(topic),
+      assistant: buildAssistantForTopic(topic, overrides?.[topic]),
       assistantDestinations: TOPIC_ORDER.filter((t) => t !== topic).map(destinationFor),
     })),
   ];

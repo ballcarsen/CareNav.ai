@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export function Nav() {
+export function Nav({ isAdmin }: { isAdmin: boolean }) {
   const router = useRouter();
 
   async function handleSignOut() {
@@ -26,6 +26,11 @@ export function Nav() {
         <Link href="/history" className="hover:underline">
           History
         </Link>
+        {isAdmin && (
+          <Link href="/admin" className="hover:underline">
+            Admin
+          </Link>
+        )}
         <button onClick={handleSignOut} className="hover:underline text-stone-500 dark:text-stone-400">
           Sign out
         </button>
