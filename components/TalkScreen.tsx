@@ -112,6 +112,17 @@ export function TalkScreen({
     };
 
     const handleError = (error: unknown) => {
+      const type = (error as { type?: string } | undefined)?.type;
+      // Vapi emits some non-fatal issues (noise-cancellation/audio-processor
+      // setup, camera/video-recording setup) on the same 'error' event as real
+      // failures -- per the SDK's own source, "audio processing is
+      // non-critical, so the call continues." Only genuinely fatal errors
+      // (call/transport failures, validation) should interrupt the UI.
+      if (type && /^(audio-|video-recording-setup-error$|camera-error$)/.test(type)) {
+        console.warn("Non-fatal Vapi error (call continues):", error);
+        return;
+      }
+
       console.error("Vapi error", error);
       setErrorMessage("Something went wrong with the call. Please try again.");
       setCallState("error");
