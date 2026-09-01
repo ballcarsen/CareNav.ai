@@ -290,6 +290,18 @@ export const TOOL_LIVE_META: Record<string, ToolLiveMeta> = Object.fromEntries(
   ),
 );
 
+// Per-topic dataKey -> mergeKey, so cross-call aggregation can dedupe/merge
+// entries the same way live tool-call accumulation does.
+export const DATA_KEY_MERGE_KEYS: Partial<Record<ConversationTopic, Record<string, string>>> =
+  Object.fromEntries(
+    (Object.entries(TOPICS) as [ConversationTopic, TopicDefinition][]).map(([topic, t]) => [
+      topic,
+      Object.fromEntries(
+        (t.liveTools ?? []).filter((lt) => lt.mergeKey).map((lt) => [lt.dataKey, lt.mergeKey!]),
+      ),
+    ]),
+  );
+
 export function buildAssistantForTopic(topic: ConversationTopic): CreateAssistantDTO {
   const t = TOPICS[topic];
   return {
