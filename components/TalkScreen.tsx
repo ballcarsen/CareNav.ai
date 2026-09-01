@@ -95,9 +95,15 @@ export function TalkScreen({
         if (!meta) continue;
         try {
           const parsed = JSON.parse(call.args) as Record<string, unknown>;
+          // Tools like record_allergy report a single scalar field (matching
+          // the flat string[] shape the post-call schema and widgets expect)
+          // rather than the whole object -- otherwise a raw object ends up in
+          // the array and crashes the widget when it renders it as text.
+          const entry = meta.scalarField ? parsed[meta.scalarField] : parsed;
+          if (entry === undefined || entry === null) continue;
           setLiveStructuredData((prev) => ({
             ...prev,
-            [meta.dataKey]: mergeStructuredDataArrays(prev[meta.dataKey] ?? [], [parsed], meta.mergeKey),
+            [meta.dataKey]: mergeStructuredDataArrays(prev[meta.dataKey] ?? [], [entry], meta.mergeKey),
           }));
         } catch (error) {
           console.error("Failed to parse tool call arguments", error);

@@ -81,7 +81,7 @@ function MedicalHistoryWidget({ data }: { data: Record<string, unknown> }) {
           </h3>
           <div className="flex flex-wrap gap-1.5">
             {allergies.map((a, i) => (
-              <Pill key={i}>{a}</Pill>
+              <Pill key={i}>{typeof a === "string" ? a : JSON.stringify(a)}</Pill>
             ))}
           </div>
         </div>
