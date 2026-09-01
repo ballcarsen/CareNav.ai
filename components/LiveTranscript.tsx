@@ -1,0 +1,36 @@
+"use client";
+
+export interface LiveTranscriptTurn {
+  role: string;
+  text: string;
+}
+
+export function LiveTranscript({ turns }: { turns: LiveTranscriptTurn[] }) {
+  if (turns.length === 0) {
+    return (
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Your conversation will appear here once it starts.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 overflow-y-auto max-h-96">
+      {turns.map((turn, i) => (
+        <div
+          key={i}
+          className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+            turn.role === "assistant"
+              ? "self-start bg-gray-100 dark:bg-gray-800"
+              : "self-end bg-blue-100 dark:bg-blue-900"
+          }`}
+        >
+          <span className="block text-xs font-medium opacity-60 mb-0.5">
+            {turn.role === "assistant" ? "Care Navigator" : "You"}
+          </span>
+          {turn.text}
+        </div>
+      ))}
+    </div>
+  );
+}
